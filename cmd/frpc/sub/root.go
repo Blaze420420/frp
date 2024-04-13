@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -40,6 +41,8 @@ var (
 	cfgDir           string
 	showVersion      bool
 	strictConfigMode bool
+
+	gService *client.Service
 )
 
 func init() {
@@ -69,10 +72,25 @@ var rootCmd = &cobra.Command{
 		err := runClient(cfgFile)
 		if err != nil {
 			fmt.Println(err)
+			if runtime.GOOS == "android" {
+				return nil
+			}
 			os.Exit(1)
 		}
 		return nil
 	},
+}
+
+func Init(d string, f string) {
+	cfgDir = d
+	cfgFile = f
+}
+
+func Stop() {
+	if gService != nil {
+		gService.Close()
+		gService = nil
+	}
 }
 
 func runMultipleClients(cfgDir string) error {
@@ -157,5 +175,6 @@ func startService(
 	if shouldGracefulClose {
 		go handleTermSignal(svr)
 	}
+	gService = svr
 	return svr.Run(context.Background())
 }
