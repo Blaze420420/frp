@@ -40,6 +40,8 @@ var (
 	cfgDir           string
 	showVersion      bool
 	strictConfigMode bool
+
+	gService *client.Service
 )
 
 func init() {
@@ -73,6 +75,18 @@ var rootCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func Init(d string, f string) {
+	cfgDir = d
+	cfgFile = f
+}
+
+func Stop() {
+	if gService != nil {
+		gService.Close()
+		gService = nil
+	}
 }
 
 func runMultipleClients(cfgDir string) error {
@@ -157,5 +171,6 @@ func startService(
 	if shouldGracefulClose {
 		go handleTermSignal(svr)
 	}
+	gService = svr
 	return svr.Run(context.Background())
 }
