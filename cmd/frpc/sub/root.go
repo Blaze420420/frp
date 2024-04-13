@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -71,6 +72,9 @@ var rootCmd = &cobra.Command{
 		err := runClient(cfgFile)
 		if err != nil {
 			fmt.Println(err)
+			if runtime.GOOS == "android" {
+				return nil
+			}
 			os.Exit(1)
 		}
 		return nil
