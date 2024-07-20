@@ -1,0 +1,73 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.txt'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '11'
+
+    - name: Setup Android NDK
+      id: setup-ndk
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r23c
+
+    - name: Get Build Version
+      id: get_build_version
+      run: echo "::set-output name=VERSION::$(cat version.txt)"
+
+    - name: Build
+      env:
+        VERSION: ${{ steps.get_build_version.outputs.VERSION }}
+        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+      run: |
+        cd cmd/frp
+        ./build_android.sh ${VERSION}
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          tag_name: ${{ steps.get_build_version.outputs.VERSION }}-android
+          release_name: Auto Build ${{ steps.get_build_version.outputs.VERSION }}
+          draft: true
+          prerelease: false
+
+    - name: Upload files
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ steps.get_build_version.outputs.VERSION }}
+      run: |
+        cd cmd/frp/libfrp
+        mv jniV jniLibs
+        zip -r jniLibs.zip jniLibs
+        gh release upload $VERSION jniLibs.zip --repo ${{ github.repository }}
+
+        cd ..
+        gh release upload $VERSION libfrp.aar --repo ${{ github.repository }}
+        gh release upload $VERSION libfrp-sources.jar --repo ${{ github.repository }}
+        
