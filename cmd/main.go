@@ -7,8 +7,7 @@ import (
 	"github.com/fatedier/frp/cmd/frp"
 )
 
-type LogListener struct {
-}
+type LogListener struct{}
 
 func (*LogListener) Log(log string) {
 }
