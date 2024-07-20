@@ -74,7 +74,7 @@ jobs:
     - name: Upload files
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ steps.get_build_version.outputs.VERSION }}
+        VERSION: ${{ steps.get_build_version.outputs.VERSION }}-android
       run: |
         cd cmd/frp/libfrp
         mv jniV jniLibs
