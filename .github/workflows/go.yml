@@ -34,6 +34,20 @@ jobs:
       with:
         ndk-version: r23c
 
+    - name: Install gomobile
+      run: go install golang.org/x/mobile/cmd/gomobile@latest
+
+    - name: Initialize gomobile
+      run: gomobile init
+
+    - name: Install Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: 34
+        target: default
+        arch: x86_64
+        channel: stable
+
     - name: Get Build Version
       id: get_build_version
       run: echo "::set-output name=VERSION::$(cat version.txt)"
@@ -60,7 +74,7 @@ jobs:
     - name: Upload files
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ steps.get_build_version.outputs.VERSION }}
+        VERSION: ${{ steps.get_build_version.outputs.VERSION }}-android
       run: |
         cd cmd/frp/libfrp
         mv jniV jniLibs
