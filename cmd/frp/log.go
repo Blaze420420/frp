@@ -5,11 +5,11 @@ import (
 	"os"
 )
 
-type LogListener interface {
+type FrpLogListener interface {
 	Log(log string)
 }
 
-func SetFrpLogListener(l LogListener) {
+func SetFrpLogListener(l FrpLogListener) {
 	reader, writer, _ := os.Pipe()
 
 	// 将多路复用器设置为标准输出
