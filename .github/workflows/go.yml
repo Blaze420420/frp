@@ -43,7 +43,7 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v2
       with:
-        api-level: 34
+        api-level: 35
         target: default
         arch: x86_64
         channel: stable
