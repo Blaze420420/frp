@@ -41,7 +41,7 @@ jobs:
       run: gomobile init
 
     - name: Install Android SDK
-      uses: android-actions/setup-android@v2
+      uses: android-actions/setup-android@v3
       with:
         api-level: 35
         target: default
