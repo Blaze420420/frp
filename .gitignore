@@ -40,3 +40,6 @@ client.key
 # Cache
 *.swp
 .DS_Store
+
+# AI
+CLAUDE.md

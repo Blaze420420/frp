@@ -14,18 +14,42 @@ frp is an open source project with its ongoing development made possible entirel
 <h3 align="center">Gold Sponsors</h3>
 <!--gold sponsors start-->
 <p align="center">
+  <a href="https://www.recall.ai/?utm_source=github&utm_medium=sponsorship&utm_campaign=fatedier-frp" target="_blank">
+    <b>Recall.ai - API for meeting recordings</b><br>
+    <br>
+    <sup>If you're looking for a meeting recording API, consider checking out Recall.ai, an API that records Zoom, Google Meet, Microsoft Teams, in-person meetings, and more.</sup>
+  </a>
+</p>
+<p align="center">
+  <a href="https://go.warp.dev/frp" target="_blank">
+    <img width="360px" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/refs/heads/main/Github/Sponsor/Warp-Github-LG-01.png">
+    <br>
+    <b>Warp, built for collaborating with AI Agents</b>
+    <br>
+	<sub>Available for macOS, Linux and Windows</sub>
+  </a>
+</p>
+<p align="center">
   <a href="https://jb.gg/frp" target="_blank">
     <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_jetbrains.jpg">
+	<br>
+	<b>The complete IDE crafted for professional Go developers</b>
   </a>
 </p>
 <p align="center">
   <a href="https://github.com/daytonaio/daytona" target="_blank">
     <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_daytona.png">
+	<br>
+	<b>Secure and Elastic Infrastructure for Running Your AI-Generated Code</b>
   </a>
 </p>
 <p align="center">
   <a href="https://github.com/beclab/Olares" target="_blank">
     <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_olares.jpeg">
+	<br>
+	<b>The sovereign cloud that puts you in control</b>
+	<br>
+	<sub>An open source, self-hosted alternative to public clouds, built for data ownership and privacy</sub>
   </a>
 </p>
 <!--gold sponsors end-->
@@ -502,7 +526,7 @@ name = "ssh"
 type = "tcp"
 localIP = "127.0.0.1"
 localPort = 22
-remotePort = "{{ .Envs.FRP_SSH_REMOTE_PORT }}"
+remotePort = {{ .Envs.FRP_SSH_REMOTE_PORT }}
 ```
 
 With the config above, variables can be passed into `frpc` program like this:
@@ -611,6 +635,21 @@ Configuring `auth.additionalScopes = ["NewWorkConns"]` will do the same for ever
 When specifying `auth.method = "token"` in `frpc.toml` and `frps.toml` - token based authentication will be used.
 
 Make sure to specify the same `auth.token` in `frps.toml` and `frpc.toml` for frpc to pass frps validation
+
+##### Token Source
+
+frp supports reading authentication tokens from external sources using the `tokenSource` configuration. Currently, file-based token source is supported.
+
+**File-based token source:**
+
+```toml
+# frpc.toml
+auth.method = "token"
+auth.tokenSource.type = "file"
+auth.tokenSource.file.path = "/path/to/token/file"
+```
+
+The token will be read from the specified file at startup. This is useful for scenarios where tokens are managed by external systems or need to be kept separate from configuration files for security reasons.
 
 #### OIDC Authentication
 
@@ -1025,7 +1064,7 @@ You can get user's real IP from HTTP request headers `X-Forwarded-For`.
 
 #### Proxy Protocol
 
-frp supports Proxy Protocol to send user's real IP to local services. It support all types except UDP.
+frp supports Proxy Protocol to send user's real IP to local services.
 
 Here is an example for https service:
 

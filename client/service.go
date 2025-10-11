@@ -88,13 +88,16 @@ type ServiceOptions struct {
 }
 
 // setServiceOptionsDefault sets the default values for ServiceOptions.
-func setServiceOptionsDefault(options *ServiceOptions) {
+func setServiceOptionsDefault(options *ServiceOptions) error {
 	if options.Common != nil {
-		options.Common.Complete()
+		if err := options.Common.Complete(); err != nil {
+			return err
+		}
 	}
 	if options.ConnectorCreator == nil {
 		options.ConnectorCreator = NewConnector
 	}
+	return nil
 }
 
 // Service is the client service that connects to frps and provides proxy services.
@@ -134,7 +137,9 @@ type Service struct {
 }
 
 func NewService(options ServiceOptions) (*Service, error) {
-	setServiceOptionsDefault(&options)
+	if err := setServiceOptionsDefault(&options); err != nil {
+		return nil, err
+	}
 
 	var webServer *httppkg.Server
 	if options.Common.WebServer.Port > 0 {
@@ -144,9 +149,15 @@ func NewService(options ServiceOptions) (*Service, error) {
 		}
 		webServer = ws
 	}
+
+	authSetter, err := auth.NewAuthSetter(options.Common.Auth)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Service{
 		ctx:              context.Background(),
-		authSetter:       auth.NewAuthSetter(options.Common.Auth),
+		authSetter:       authSetter,
 		webServer:        webServer,
 		common:           options.Common,
 		configFilePath:   options.ConfigFilePath,
@@ -325,10 +336,9 @@ func (svr *Service) loopLoginUntilSuccess(maxInterval time.Duration, firstLoginE
 		proxyCfgs := svr.proxyCfgs
 		visitorCfgs := svr.visitorCfgs
 		svr.cfgMu.RUnlock()
-		connEncrypted := true
-		if svr.clientSpec != nil && svr.clientSpec.Type == "ssh-tunnel" {
-			connEncrypted = false
-		}
+
+		connEncrypted := svr.clientSpec == nil || svr.clientSpec.Type != "ssh-tunnel"
+
 		sessionCtx := &SessionContext{
 			Common:         svr.common,
 			RunID:          svr.runID,
@@ -398,6 +408,10 @@ func (svr *Service) stop() {
 	if svr.ctl != nil {
 		svr.ctl.GracefulClose(svr.gracefulShutdownDuration)
 		svr.ctl = nil
+	}
+	if svr.webServer != nil {
+		svr.webServer.Close()
+		svr.webServer = nil
 	}
 }
 
