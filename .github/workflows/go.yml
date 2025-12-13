@@ -20,13 +20,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.22'
+        go-version: '1.23'
 
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
-        java-version: '11'
+        java-version: '17'
 
     - name: Setup Android NDK
       id: setup-ndk
@@ -41,9 +41,9 @@ jobs:
       run: gomobile init
 
     - name: Install Android SDK
-      uses: android-actions/setup-android@v2
+      uses: android-actions/setup-android@v3
       with:
-        api-level: 34
+        api-level: 35
         target: default
         arch: x86_64
         channel: stable

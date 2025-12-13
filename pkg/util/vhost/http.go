@@ -29,6 +29,8 @@ import (
 
 	libio "github.com/fatedier/golib/io"
 	"github.com/fatedier/golib/pool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	httppkg "github.com/fatedier/frp/pkg/util/http"
 	"github.com/fatedier/frp/pkg/util/log"
@@ -41,7 +43,7 @@ type HTTPReverseProxyOptions struct {
 }
 
 type HTTPReverseProxy struct {
-	proxy       *httputil.ReverseProxy
+	proxy       http.Handler
 	vhostRouter *Routers
 
 	responseHeaderTimeout time.Duration
@@ -138,7 +140,7 @@ func NewHTTPReverseProxy(option HTTPReverseProxyOptions, vhostRouter *Routers) *
 			_, _ = rw.Write(getNotFoundPageContent())
 		},
 	}
-	rp.proxy = proxy
+	rp.proxy = h2c.NewHandler(proxy, &http2.Server{})
 	return rp
 }
 
@@ -160,7 +162,7 @@ func (rp *HTTPReverseProxy) UnRegister(routeCfg RouteConfig) {
 func (rp *HTTPReverseProxy) GetRouteConfig(domain, location, routeByHTTPUser string) *RouteConfig {
 	vr, ok := rp.getVhost(domain, location, routeByHTTPUser)
 	if ok {
-		log.Debugf("get new HTTP request host [%s] path [%s] httpuser [%s]", domain, location, routeByHTTPUser)
+		log.Debugf("get new http request host [%s] path [%s] httpuser [%s]", domain, location, routeByHTTPUser)
 		return vr.payload.(*RouteConfig)
 	}
 	return nil
@@ -223,11 +225,7 @@ func (rp *HTTPReverseProxy) getVhost(domain, location, routeByHTTPUser string) (
 	// *.example.com
 	// *.com
 	domainSplit := strings.Split(domain, ".")
-	for {
-		if len(domainSplit) < 3 {
-			break
-		}
-
+	for len(domainSplit) >= 3 {
 		domainSplit[0] = "*"
 		domain = strings.Join(domainSplit, ".")
 		vr, ok = findRouter(domain, location, routeByHTTPUser)
