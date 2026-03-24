@@ -10,6 +10,7 @@ on:
     paths:
       - 'version.txt'
       - '.github/workflows/go.yml'
+      - 'cmd/frp/build_android.sh'
 
 jobs:
 
