@@ -1,8 +1,6 @@
 package frp
 
 import (
-	_ "github.com/fatedier/frp/assets/frpc"
-	_ "github.com/fatedier/frp/assets/frps"
 	_ "github.com/fatedier/frp/client"
 	_ "github.com/fatedier/frp/client/proxy"
 	_ "github.com/fatedier/frp/pkg/config"

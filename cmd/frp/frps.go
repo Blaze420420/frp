@@ -8,6 +8,7 @@ import (
 	"github.com/fatedier/frp/pkg/config"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	"github.com/fatedier/frp/pkg/config/v1/validation"
+	"github.com/fatedier/frp/pkg/policy/security"
 	"github.com/fatedier/frp/pkg/util/log"
 	"github.com/fatedier/frp/server"
 )
@@ -39,7 +40,9 @@ func RunFrps(cfgFile string, strictConfigMode bool) {
 		os.Exit(1)
 	}
 
-	warning, err := validation.ValidateServerConfig(svrCfg)
+	unsafeFeatures := security.NewUnsafeFeatures([]string{})
+	validator := validation.NewConfigValidator(unsafeFeatures)
+	warning, err := validator.ValidateServerConfig(svrCfg)
 	if warning != nil {
 		fmt.Printf("WARNING: %v\n", warning)
 	}
