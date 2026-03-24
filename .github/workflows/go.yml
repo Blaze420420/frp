@@ -9,6 +9,7 @@ on:
       - master
     paths:
       - 'version.txt'
+      - '.github/workflows/go.yml'
 
 jobs:
 
