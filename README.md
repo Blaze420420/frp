@@ -13,22 +13,26 @@ frp is an open source project with its ongoing development made possible entirel
 
 <h3 align="center">Gold Sponsors</h3>
 <!--gold sponsors start-->
+<div align="center">
+
+## Recall.ai - API for meeting recordings
+
+If you're looking for a meeting recording API, consider checking out [Recall.ai](https://www.recall.ai/?utm_source=github&utm_medium=sponsorship&utm_campaign=fatedier-frp),
+
+an API that records Zoom, Google Meet, Microsoft Teams, in-person meetings, and more.
+
+</div>
+
 <p align="center">
-  <a href="https://www.recall.ai/?utm_source=github&utm_medium=sponsorship&utm_campaign=fatedier-frp" target="_blank">
-    <b>Recall.ai - API for meeting recordings</b><br>
+  <a href="https://requestly.com/?utm_source=github&utm_medium=partnered&utm_campaign=frp" target="_blank">
+    <img width="480px" src="https://github.com/user-attachments/assets/24670320-997d-4d62-9bca-955c59fe883d">
     <br>
-    <sup>If you're looking for a meeting recording API, consider checking out Recall.ai, an API that records Zoom, Google Meet, Microsoft Teams, in-person meetings, and more.</sup>
+    <b>Requestly - Free & Open-Source alternative to Postman</b>
+    <br>
+    <sub>All-in-one platform to Test, Mock and Intercept APIs.</sub>
   </a>
 </p>
-<p align="center">
-  <a href="https://go.warp.dev/frp" target="_blank">
-    <img width="360px" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/refs/heads/main/Github/Sponsor/Warp-Github-LG-01.png">
-    <br>
-    <b>Warp, built for collaborating with AI Agents</b>
-    <br>
-	<sub>Available for macOS, Linux and Windows</sub>
-  </a>
-</p>
+
 <p align="center">
   <a href="https://jb.gg/frp" target="_blank">
     <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_jetbrains.jpg">
@@ -36,13 +40,7 @@ frp is an open source project with its ongoing development made possible entirel
 	<b>The complete IDE crafted for professional Go developers</b>
   </a>
 </p>
-<p align="center">
-  <a href="https://github.com/daytonaio/daytona" target="_blank">
-    <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_daytona.png">
-	<br>
-	<b>Secure and Elastic Infrastructure for Running Your AI-Generated Code</b>
-  </a>
-</p>
+
 <p align="center">
   <a href="https://github.com/beclab/Olares" target="_blank">
     <img width="420px" src="https://raw.githubusercontent.com/fatedier/frp/dev/doc/pic/sponsor_olares.jpeg">
@@ -802,6 +800,14 @@ webServer.port = 7400
 Then run command `frpc reload -c ./frpc.toml` and wait for about 10 seconds to let `frpc` create or update or remove proxies.
 
 **Note that global client parameters won't be modified except 'start'.**
+
+`start` is a global allowlist evaluated after all sources are merged (config file/include/store).
+If `start` is non-empty, any proxy or visitor not listed there will not be started, including
+entries created via Store API.
+
+`start` is kept mainly for compatibility and is generally not recommended for new configurations.
+Prefer per-proxy/per-visitor `enabled`, and keep `start` empty unless you explicitly want this
+global allowlist behavior.
 
 You can run command `frpc verify -c ./frpc.toml` before reloading to check if there are config errors.
 

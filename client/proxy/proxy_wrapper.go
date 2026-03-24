@@ -29,6 +29,7 @@ import (
 	"github.com/fatedier/frp/client/health"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	"github.com/fatedier/frp/pkg/msg"
+	"github.com/fatedier/frp/pkg/naming"
 	"github.com/fatedier/frp/pkg/transport"
 	"github.com/fatedier/frp/pkg/util/xlog"
 	"github.com/fatedier/frp/pkg/vnet"
@@ -86,12 +87,15 @@ type Wrapper struct {
 
 	xl  *xlog.Logger
 	ctx context.Context
+
+	wireName string
 }
 
 func NewWrapper(
 	ctx context.Context,
 	cfg v1.ProxyConfigurer,
 	clientCfg *v1.ClientCommonConfig,
+	encryptionKey []byte,
 	eventHandler event.Handler,
 	msgTransporter transport.MessageTransporter,
 	vnetController *vnet.Controller,
@@ -112,6 +116,7 @@ func NewWrapper(
 		vnetController: vnetController,
 		xl:             xl,
 		ctx:            xlog.NewContext(ctx, xl),
+		wireName:       naming.AddUserPrefix(clientCfg.User, baseInfo.Name),
 	}
 
 	if baseInfo.HealthCheck.Type != "" && baseInfo.LocalPort > 0 {
@@ -122,7 +127,7 @@ func NewWrapper(
 		xl.Tracef("enable health check monitor")
 	}
 
-	pw.pxy = NewProxy(pw.ctx, pw.Cfg, clientCfg, pw.msgTransporter, pw.vnetController)
+	pw.pxy = NewProxy(pw.ctx, pw.Cfg, clientCfg, encryptionKey, pw.msgTransporter, pw.vnetController)
 	return pw
 }
 
@@ -181,7 +186,7 @@ func (pw *Wrapper) Stop() {
 func (pw *Wrapper) close() {
 	_ = pw.handler(&event.CloseProxyPayload{
 		CloseProxyMsg: &msg.CloseProxy{
-			ProxyName: pw.Name,
+			ProxyName: pw.wireName,
 		},
 	})
 }
@@ -207,6 +212,7 @@ func (pw *Wrapper) checkWorker() {
 
 				var newProxyMsg msg.NewProxy
 				pw.Cfg.MarshalToMsg(&newProxyMsg)
+				newProxyMsg.ProxyName = pw.wireName
 				pw.lastSendStartMsg = now
 				_ = pw.handler(&event.StartProxyPayload{
 					NewProxyMsg: &newProxyMsg,

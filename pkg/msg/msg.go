@@ -61,7 +61,7 @@ var msgTypeMap = map[byte]any{
 	TypeNatHoleReport:      NatHoleReport{},
 }
 
-var TypeNameNatHoleResp = reflect.TypeOf(&NatHoleResp{}).Elem().Name()
+var TypeNameNatHoleResp = reflect.TypeFor[NatHoleResp]().Name()
 
 type ClientSpec struct {
 	// Due to the support of VirtualClient, frps needs to know the client type in order to
@@ -82,6 +82,7 @@ type Login struct {
 	PrivilegeKey string            `json:"privilege_key,omitempty"`
 	Timestamp    int64             `json:"timestamp,omitempty"`
 	RunID        string            `json:"run_id,omitempty"`
+	ClientID     string            `json:"client_id,omitempty"`
 	Metas        map[string]string `json:"metas,omitempty"`
 
 	// Currently only effective for VirtualClient.
@@ -183,7 +184,7 @@ type Pong struct {
 }
 
 type UDPPacket struct {
-	Content    string       `json:"c,omitempty"`
+	Content    []byte       `json:"c,omitempty"`
 	LocalAddr  *net.UDPAddr `json:"l,omitempty"`
 	RemoteAddr *net.UDPAddr `json:"r,omitempty"`
 }

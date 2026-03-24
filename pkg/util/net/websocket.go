@@ -26,13 +26,14 @@ type WebsocketListener struct {
 // ln: tcp listener for websocket connections
 func NewWebsocketListener(ln net.Listener) (wl *WebsocketListener) {
 	wl = &WebsocketListener{
+		ln:       ln,
 		acceptCh: make(chan net.Conn),
 	}
 
 	muxer := http.NewServeMux()
 	muxer.Handle(FrpWebsocketPath, websocket.Handler(func(c *websocket.Conn) {
 		notifyCh := make(chan struct{})
-		conn := WrapCloseNotifyConn(c, func() {
+		conn := WrapCloseNotifyConn(c, func(_ error) {
 			close(notifyCh)
 		})
 		wl.acceptCh <- conn

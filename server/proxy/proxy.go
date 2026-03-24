@@ -68,6 +68,7 @@ type BaseProxy struct {
 	poolCount     int
 	getWorkConnFn GetWorkConnFn
 	serverCfg     *v1.ServerConfig
+	encryptionKey []byte
 	limiter       *rate.Limiter
 	userInfo      plugin.UserInfo
 	loginMsg      *msg.Login
@@ -149,7 +150,7 @@ func (pxy *BaseProxy) GetWorkConnFromPool(src, dst net.Addr) (workConn net.Conn,
 			dstAddr, dstPortStr, _ = net.SplitHostPort(dst.String())
 			dstPort, _ = strconv.ParseUint(dstPortStr, 10, 16)
 		}
-		err := msg.WriteMsg(workConn, &msg.StartWorkConn{
+		err = msg.WriteMsg(workConn, &msg.StartWorkConn{
 			ProxyName: pxy.GetName(),
 			SrcAddr:   srcAddr,
 			SrcPort:   uint16(srcPort),
@@ -160,6 +161,7 @@ func (pxy *BaseProxy) GetWorkConnFromPool(src, dst net.Addr) (workConn net.Conn,
 		if err != nil {
 			xl.Warnf("failed to send message to work connection from pool: %v, times: %d", err, i)
 			workConn.Close()
+			workConn = nil
 		} else {
 			break
 		}
@@ -170,6 +172,36 @@ func (pxy *BaseProxy) GetWorkConnFromPool(src, dst net.Addr) (workConn net.Conn,
 		return
 	}
 	return
+}
+
+// startVisitorListener sets up a VisitorManager listener for visitor-based proxies (STCP, SUDP).
+func (pxy *BaseProxy) startVisitorListener(secretKey string, allowUsers []string, proxyType string) error {
+	// if allowUsers is empty, only allow same user from proxy
+	if len(allowUsers) == 0 {
+		allowUsers = []string{pxy.GetUserInfo().User}
+	}
+	listener, err := pxy.rc.VisitorManager.Listen(pxy.GetName(), secretKey, allowUsers)
+	if err != nil {
+		return err
+	}
+	pxy.listeners = append(pxy.listeners, listener)
+	pxy.xl.Infof("%s proxy custom listen success", proxyType)
+	pxy.startCommonTCPListenersHandler()
+	return nil
+}
+
+// buildDomains constructs a list of domains from custom domains and subdomain configuration.
+func (pxy *BaseProxy) buildDomains(customDomains []string, subDomain string) []string {
+	domains := make([]string, 0, len(customDomains)+1)
+	for _, d := range customDomains {
+		if d != "" {
+			domains = append(domains, d)
+		}
+	}
+	if subDomain != "" {
+		domains = append(domains, subDomain+"."+pxy.serverCfg.SubDomainHost)
+	}
+	return domains
 }
 
 // startCommonTCPListenersHandler start a goroutine handler for each listener.
@@ -213,7 +245,6 @@ func (pxy *BaseProxy) handleUserTCPConnection(userConn net.Conn) {
 	xl := xlog.FromContextSafe(pxy.Context())
 	defer userConn.Close()
 
-	serverCfg := pxy.serverCfg
 	cfg := pxy.configurer.GetBaseConfig()
 	// server plugin hook
 	rc := pxy.GetResourceController()
@@ -240,7 +271,7 @@ func (pxy *BaseProxy) handleUserTCPConnection(userConn net.Conn) {
 	xl.Tracef("handler user tcp connection, use_encryption: %t, use_compression: %t",
 		cfg.Transport.UseEncryption, cfg.Transport.UseCompression)
 	if cfg.Transport.UseEncryption {
-		local, err = libio.WithEncryption(local, []byte(serverCfg.Auth.Token))
+		local, err = libio.WithEncryption(local, pxy.encryptionKey)
 		if err != nil {
 			xl.Errorf("create encryption stream error: %v", err)
 			return
@@ -279,6 +310,7 @@ type Options struct {
 	GetWorkConnFn      GetWorkConnFn
 	Configurer         v1.ProxyConfigurer
 	ServerCfg          *v1.ServerConfig
+	EncryptionKey      []byte
 }
 
 func NewProxy(ctx context.Context, options *Options) (pxy Proxy, err error) {
@@ -298,6 +330,7 @@ func NewProxy(ctx context.Context, options *Options) (pxy Proxy, err error) {
 		poolCount:     options.PoolCount,
 		getWorkConnFn: options.GetWorkConnFn,
 		serverCfg:     options.ServerCfg,
+		encryptionKey: options.EncryptionKey,
 		limiter:       limiter,
 		xl:            xl,
 		ctx:           xlog.NewContext(ctx, xl),

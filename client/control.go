@@ -25,6 +25,7 @@ import (
 	"github.com/fatedier/frp/pkg/auth"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	"github.com/fatedier/frp/pkg/msg"
+	"github.com/fatedier/frp/pkg/naming"
 	"github.com/fatedier/frp/pkg/transport"
 	netpkg "github.com/fatedier/frp/pkg/util/net"
 	"github.com/fatedier/frp/pkg/util/wait"
@@ -43,8 +44,8 @@ type SessionContext struct {
 	Conn net.Conn
 	// Indicates whether the connection is encrypted.
 	ConnEncrypted bool
-	// Sets authentication based on selected method
-	AuthSetter auth.Setter
+	// Auth runtime used for login, heartbeats, and encryption.
+	Auth *auth.ClientAuth
 	// Connector is used to create new connections, which could be real TCP connections or virtual streams.
 	Connector Connector
 	// Virtual net controller
@@ -91,7 +92,7 @@ func NewControl(ctx context.Context, sessionCtx *SessionContext) (*Control, erro
 	ctl.lastPong.Store(time.Now())
 
 	if sessionCtx.ConnEncrypted {
-		cryptoRW, err := netpkg.NewCryptoReadWriter(sessionCtx.Conn, []byte(sessionCtx.Common.Auth.Token))
+		cryptoRW, err := netpkg.NewCryptoReadWriter(sessionCtx.Conn, sessionCtx.Auth.EncryptionKey())
 		if err != nil {
 			return nil, err
 		}
@@ -100,9 +101,9 @@ func NewControl(ctx context.Context, sessionCtx *SessionContext) (*Control, erro
 		ctl.msgDispatcher = msg.NewDispatcher(sessionCtx.Conn)
 	}
 	ctl.registerMsgHandlers()
-	ctl.msgTransporter = transport.NewMessageTransporter(ctl.msgDispatcher.SendChannel())
+	ctl.msgTransporter = transport.NewMessageTransporter(ctl.msgDispatcher)
 
-	ctl.pm = proxy.NewManager(ctl.ctx, sessionCtx.Common, ctl.msgTransporter, sessionCtx.VnetController)
+	ctl.pm = proxy.NewManager(ctl.ctx, sessionCtx.Common, sessionCtx.Auth.EncryptionKey(), ctl.msgTransporter, sessionCtx.VnetController)
 	ctl.vm = visitor.NewManager(ctl.ctx, sessionCtx.RunID, sessionCtx.Common,
 		ctl.connectServer, ctl.msgTransporter, sessionCtx.VnetController)
 	return ctl, nil
@@ -133,7 +134,7 @@ func (ctl *Control) handleReqWorkConn(_ msg.Message) {
 	m := &msg.NewWorkConn{
 		RunID: ctl.sessionCtx.RunID,
 	}
-	if err = ctl.sessionCtx.AuthSetter.SetNewWorkConn(m); err != nil {
+	if err = ctl.sessionCtx.Auth.Setter.SetNewWorkConn(m); err != nil {
 		xl.Warnf("error during NewWorkConn authentication: %v", err)
 		workConn.Close()
 		return
@@ -156,6 +157,8 @@ func (ctl *Control) handleReqWorkConn(_ msg.Message) {
 		return
 	}
 
+	startMsg.ProxyName = naming.StripUserPrefix(ctl.sessionCtx.Common.User, startMsg.ProxyName)
+
 	// dispatch this work connection to related proxy
 	ctl.pm.HandleWorkConn(startMsg.ProxyName, workConn, &startMsg)
 }
@@ -165,11 +168,12 @@ func (ctl *Control) handleNewProxyResp(m msg.Message) {
 	inMsg := m.(*msg.NewProxyResp)
 	// Server will return NewProxyResp message to each NewProxy message.
 	// Start a new proxy handler if no error got
-	err := ctl.pm.StartProxy(inMsg.ProxyName, inMsg.RemoteAddr, inMsg.Error)
+	proxyName := naming.StripUserPrefix(ctl.sessionCtx.Common.User, inMsg.ProxyName)
+	err := ctl.pm.StartProxy(proxyName, inMsg.RemoteAddr, inMsg.Error)
 	if err != nil {
-		xl.Warnf("[%s] start error: %v", inMsg.ProxyName, err)
+		xl.Warnf("[%s] start error: %v", proxyName, err)
 	} else {
-		xl.Infof("[%s] start proxy success", inMsg.ProxyName)
+		xl.Infof("[%s] start proxy success", proxyName)
 	}
 }
 
@@ -243,7 +247,7 @@ func (ctl *Control) heartbeatWorker() {
 		sendHeartBeat := func() (bool, error) {
 			xl.Debugf("send heartbeat to server")
 			pingMsg := &msg.Ping{}
-			if err := ctl.sessionCtx.AuthSetter.SetPing(pingMsg); err != nil {
+			if err := ctl.sessionCtx.Auth.Setter.SetPing(pingMsg); err != nil {
 				xl.Warnf("error during ping authentication: %v, skip sending ping message", err)
 				return false, err
 			}

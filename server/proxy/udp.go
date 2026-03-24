@@ -35,7 +35,7 @@ import (
 )
 
 func init() {
-	RegisterProxyFactory(reflect.TypeOf(&v1.UDPProxyConfig{}), NewUDPProxy)
+	RegisterProxyFactory(reflect.TypeFor[*v1.UDPProxyConfig](), NewUDPProxy)
 }
 
 type UDPProxy struct {
@@ -136,7 +136,7 @@ func (pxy *UDPProxy) Run() (remoteAddr string, err error) {
 				continue
 			case *msg.UDPPacket:
 				if errRet := errors.PanicToError(func() {
-					xl.Tracef("get udp message from workConn: %s", m.Content)
+					xl.Tracef("get udp message from workConn, len: %d", len(m.Content))
 					pxy.readCh <- m
 					metrics.Server.AddTrafficOut(
 						pxy.GetName(),
@@ -167,7 +167,7 @@ func (pxy *UDPProxy) Run() (remoteAddr string, err error) {
 					conn.Close()
 					return
 				}
-				xl.Tracef("send message to udp workConn: %s", udpMsg.Content)
+				xl.Tracef("send message to udp workConn, len: %d", len(udpMsg.Content))
 				metrics.Server.AddTrafficIn(
 					pxy.GetName(),
 					pxy.GetConfigurer().GetBaseConfig().Type,
@@ -205,7 +205,7 @@ func (pxy *UDPProxy) Run() (remoteAddr string, err error) {
 
 			var rwc io.ReadWriteCloser = workConn
 			if pxy.cfg.Transport.UseEncryption {
-				rwc, err = libio.WithEncryption(rwc, []byte(pxy.serverCfg.Auth.Token))
+				rwc, err = libio.WithEncryption(rwc, pxy.encryptionKey)
 				if err != nil {
 					xl.Errorf("create encryption stream error: %v", err)
 					workConn.Close()

@@ -29,19 +29,28 @@ var (
 	prefixPath string
 )
 
+type emptyFS struct{}
+
+func (emptyFS) Open(name string) (http.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+}
+
 // if path is empty, load assets in memory
 // or set FileSystem using disk files
 func Load(path string) {
 	prefixPath = path
-	if prefixPath != "" {
+	switch {
+	case prefixPath != "":
 		FileSystem = http.Dir(prefixPath)
-	} else {
+	case content != nil:
 		FileSystem = http.FS(content)
+	default:
+		FileSystem = emptyFS{}
 	}
 }
 
 func Register(fileSystem fs.FS) {
-	subFs, err := fs.Sub(fileSystem, "static")
+	subFs, err := fs.Sub(fileSystem, "dist")
 	if err == nil {
 		content = subFs
 	}
