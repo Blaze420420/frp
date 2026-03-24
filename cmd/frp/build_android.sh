@@ -26,6 +26,8 @@ if [ ! -d "${ANDROID_HOME}/ndk-bundle" ] && [ ! -d "${ANDROID_NDK_HOME}" ]; then
 fi
 
 go env -w GO111MODULE=auto
+go install golang.org/x/mobile/cmd/gomobile@latest
+gomobile init
 gomobile bind -v -o libfrp.aar -target=android .
 
 unzip -d libfrp libfrp.aar
